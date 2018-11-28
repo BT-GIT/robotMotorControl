@@ -200,7 +200,7 @@ int main(void) {
     rightStop();
 
     // Enter main loop.
-    while( 1 ) {
+    while(1) {
         // SEQUENCE #1
         wait_pressed(); // Blocking function for button.
         reset_button(); // 2.5s delay.
