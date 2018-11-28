@@ -130,7 +130,6 @@ void turn_step( int16_t angle_deg )
     else if( current_angle > angle_deg )
     {
         --current_angle;
-
         MOTOR_PIN_1 = 0;
         MOTOR_PIN_2 = fullSpeed;
         MOTOR_PIN_3 = fullSpeed;
