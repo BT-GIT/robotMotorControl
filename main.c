@@ -197,30 +197,52 @@ void rightStop (void) {
 
 // Combined motor control.
 void motorControl (uint8_t left, uint8_t right) {
-    if (left == STOP) {
-        leftStop();
-        leftStatus = STOP;
+    // If switching motor directions, 100% duty cycle for 100ms.
+    if (left |= leftStatus || right |= rightStatus) {
+        if (left |= leftStatus) {
+            switch(left) {
+                case 1:
+                    leftForward(MAXSPEED);
+                case 2:
+                    leftReverse(MAXSPEED);
+                case 3:
+                    leftStop();
+            }
+        }
+        if (right |= rightStatus) {
+            switch(right) {
+                case 1:
+                    rightForward(MAXSPEED);
+                case 2:
+                    rightReverse(MAXSPEED);
+                case 3:
+                    rightStop();
+            }
+        }
+        wait_microsecond(100000);
     }
-    else if (left == FORWARD) {
-        leftForward(MAXSPEED);
-        leftStatus = FORWARD;
-    }
-    else if (left == REVERSE) {
-        leftReverse(MAXSPEED);
-        leftStatus = REVERSE;
-    }
-    if (right == STOP) {
-        rightStop();
-        rightStatus = STOP;
-    }
-    else if (right == FORWARD) {
-        rightForward(MAXSPEED);
-        rightStatus = FORWARD;
-    }
-    else if (right == REVERSE) {
-        rightReverse(MAXSPEED);
-        rightStatus = REVERSE;
-    }   
+    
+    // Set cruising motor speed.
+    switch(left) {
+        case 1:
+            leftForward(REGSPEED);
+            leftStatus = FORWARD;
+        case 2:
+            leftReverse(REGSPEED);
+            leftStatus = REVERSE;
+        case 3:
+            leftStop();
+            leftStatus = STOP;
+    switch(right) {
+        case 1:
+            rightForward(REGSPEED);
+            rightStatus = FORWARD;
+        case 2:
+            rightReverse(REGSPEED);
+            rightStatus = REVERSE;
+        case 3:
+            rightStop();
+            rightStatus = STOP;
 }
 
 //-----------------------------------------------------------------------------
@@ -240,11 +262,7 @@ int main(void) {
         wait_pressed(); // Blocking function for button.
         reset_button(); // 2.5s delay.
         // Reverse for 1 sec.
-        leftReverse(MAXSPEED);
-        rightReverse(MAXSPEED);
-        wait_microsecond(100000);
-        leftReverse(REGSPEED);
-        rightReverse(REGSPEED);
+        motorControl(REVERSE,REVERSE);
         wait_microsecond(900000);
         // Sit for 1 sec.
         leftStop();
