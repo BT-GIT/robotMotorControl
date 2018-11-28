@@ -229,7 +229,8 @@ int main(void) {
     // Initialize the hardware for this driver
     init_hw();
     boot_driver();
-    // Default to motors off.
+    
+    // Verify motors stopped.
     leftStop();
     rightStop();
 
