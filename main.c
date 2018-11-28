@@ -33,8 +33,16 @@
 
 // Discretes.
 #define MAXSPEED 900    // Duty cycle numerator out of 1023.
+#define REGSPEED 900    // Duty cycle numerator out of 1023.
 #define ON       1
 #define OFF      0
+#define FORWARD  1
+#define REVERSE  2
+#define STOP     3
+
+// Globals.
+uint8_t leftStatus = 0;
+uint8_t rightStatus = 0;
 
 // ----------------------------------------------------------------------------
 
@@ -185,6 +193,19 @@ void rightReverse (void) {
 }
 void rightStop (void) {
     MOTOR_PIN_3 = MOTOR_PIN_4 = OFF;
+}
+
+// Combined motor control.
+void motorControl (uint8_t left, uint8_t right) {
+    if (left == STOP) {
+        leftStop();
+    }
+    if (right == STOP) {
+        rightStop();
+    }
+    
+    
+    
 }
 
 //-----------------------------------------------------------------------------
