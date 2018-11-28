@@ -99,8 +99,6 @@ void init_hw() {
     PWM0_ENABLE_R = PWM_ENABLE_PWM3EN | PWM_ENABLE_PWM4EN | PWM_ENABLE_PWM5EN | PWM_ENABLE_PWM0EN;
 }
 
-// ----------------------------------------------------------------------------
-
 // Alert of the boot sequence.
 inline void boot_driver( void ) {
     GREEN_LED = ON;
