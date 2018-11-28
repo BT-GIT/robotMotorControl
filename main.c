@@ -6,7 +6,7 @@
 // Target uC:       TM4C123GH6PM
 // System Clock:    40 MHz
 // PWM Divisor:     64
-// Motor Driver:    DRV8833
+// Motor Driver:    SN754410
 //
 // HARDWARE CONFIGURATION:
 // Red LED:                 PF1 (Internal to board.)
@@ -29,10 +29,10 @@
 #define PUSH_BUTTON ( *( ( volatile uint32_t *)( 0x42000000 + ( 0x400253FC - 0x40000000 ) * 32 + 4 * 4 ) ) )
 
 // Hardware PWM comparator addresses
-#define MOTOR_PIN_1 PWM0_1_CMPB_R // Green wire - PB5
-#define MOTOR_PIN_2 PWM0_0_CMPA_R // Blue wire - PB6 (PD0)
+#define MOTOR_PIN_1 PWM0_1_CMPB_R // Green wire  - PB5
+#define MOTOR_PIN_2 PWM0_0_CMPA_R // Blue wire   - PB6 (PD0)
 #define MOTOR_PIN_3 PWM0_2_CMPA_R // Orange wire - PE4
-#define MOTOR_PIN_4 PWM0_2_CMPB_R // White wire - PE5
+#define MOTOR_PIN_4 PWM0_2_CMPB_R // White wire  - PE5
 
 // Initialize Hardware
 void init_hw( void );
@@ -185,13 +185,11 @@ inline void reset_button( void ) {
 
 void wait_pressed( void ) {
     static uint8_t debounce = 0U;
-    while( debounce < 10 ){
-        if( !PUSH_BUTTON )
-        {
+    while( debounce < 10 ) {
+        if( !PUSH_BUTTON ) {
             ++debounce;
         }
-        else
-        {
+        else {
             debounce = 0;
         }
         wait_microsecond( 5 );
