@@ -32,9 +32,17 @@
 #define MOTOR_PIN_4 PWM0_2_CMPB_R // White wire  - PE5
 
 // Discretes.
-#define MAXSPEED 900    // Duty cycle numerator out of 1023.
+#define MAXSPEED 1023   // Duty cycle numerator out of 1023.
+#define REGSPEED 512    // Duty cycle numerator out of 1023.
 #define ON       1
 #define OFF      0
+#define FORWARD  1
+#define REVERSE  2
+#define STOP     3
+
+// Globals.
+uint8_t leftStatus = 0;
+uint8_t rightStatus = 0;
 
 // ----------------------------------------------------------------------------
 
@@ -162,12 +170,12 @@ void wait_microsecond( uint32_t us ) {
 //-----------------------------------------------------------------------------
 
 // Left motor control functions.
-void leftForward (void) {
+void leftForward (uint16_t speed) {
     MOTOR_PIN_1 = OFF;
-    MOTOR_PIN_2 = MAXSPEED;
+    MOTOR_PIN_2 = speed;
 }
-void leftReverse (void) {
-    MOTOR_PIN_1 = MAXSPEED;
+void leftReverse (uint16_t speed) {
+    MOTOR_PIN_1 = speed;
     MOTOR_PIN_2 = OFF;
 }
 void leftStop (void) {
@@ -175,16 +183,44 @@ void leftStop (void) {
 }
 
 // Right motor control functions.
-void rightForward (void) {
+void rightForward (uint16_t speed) {
     MOTOR_PIN_3 = OFF;
-    MOTOR_PIN_4 = MAXSPEED;
+    MOTOR_PIN_4 = speed;
 }
-void rightReverse (void) {
-    MOTOR_PIN_3 = MAXSPEED;
+void rightReverse (uint16_t speed) {
+    MOTOR_PIN_3 = speed;
     MOTOR_PIN_4 = OFF;
 }
 void rightStop (void) {
     MOTOR_PIN_3 = MOTOR_PIN_4 = OFF;
+}
+
+// Combined motor control.
+void motorControl (uint8_t left, uint8_t right) {
+    if (left == STOP) {
+        leftStop();
+        leftStatus = STOP;
+    }
+    else if (left == FORWARD) {
+        leftForward(MAXSPEED);
+        leftStatus = FORWARD;
+    }
+    else if (left == REVERSE) {
+        leftReverse(MAXSPEED);
+        leftStatus = REVERSE;
+    }
+    if (right == STOP) {
+        rightStop();
+        rightStatus = STOP;
+    }
+    else if (right == FORWARD) {
+        rightForward(MAXSPEED);
+        rightStatus = FORWARD;
+    }
+    else if (right == REVERSE) {
+        rightReverse(MAXSPEED);
+        rightStatus = REVERSE;
+    }   
 }
 
 //-----------------------------------------------------------------------------
@@ -193,7 +229,8 @@ int main(void) {
     // Initialize the hardware for this driver
     init_hw();
     boot_driver();
-    // Default to motors off.
+    
+    // Verify motors stopped.
     leftStop();
     rightStop();
 
@@ -203,16 +240,22 @@ int main(void) {
         wait_pressed(); // Blocking function for button.
         reset_button(); // 2.5s delay.
         // Reverse for 1 sec.
-        leftReverse();
-        rightReverse();
-        wait_microsecond(1 * 1000000);
+        leftReverse(MAXSPEED);
+        rightReverse(MAXSPEED);
+        wait_microsecond(100000);
+        leftReverse(REGSPEED);
+        rightReverse(REGSPEED);
+        wait_microsecond(900000);
         // Sit for 1 sec.
         leftStop();
         rightStop();
         wait_microsecond(1* 1000000);
         // Forward indefinitely.
-        leftForward();
-        rightForward();
+        leftForward(MAXSPEED);
+        rightForward(MAXSPEED);
+        wait_microsecond(100000);
+        leftForward(REGSPEED);
+        rightForward(REGSPEED);
         RED_LED = ON;
         
         // TEST SEQUENCE #2
