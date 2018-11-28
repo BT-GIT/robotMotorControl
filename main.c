@@ -204,7 +204,7 @@ int main(void)
     while( 1 ) {
         // Sequence #1.
         wait_pressed(); // Blocking function for button.
-        reset_button();
+        reset_button(); // 2.5s delay.
         // Reverse for 1 sec.
         leftReverse();
         rightReverse();
@@ -220,7 +220,7 @@ int main(void)
         
         // Sequence #2.
         wait_pressed(); // Blocking function for button.
-        reset_button();
+        reset_button(); // 2.5s delay.
         // Stop both motors.
         leftStop();
         rightStop();
