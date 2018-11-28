@@ -1,5 +1,3 @@
-// EE6314 DRV8833 Driver (Stepping and Microstepping)
-
 //-----------------------------------------------------------------------------
 // Hardware Target
 //-----------------------------------------------------------------------------
@@ -8,9 +6,13 @@
 // Target uC:       TM4C123GH6PM
 // System Clock:    40 MHz
 // PWM Divisor:     64
+// Motor Driver:    DRV8833
 //
-// Hardware configuration:
-// Blue LED:                PF2 (Internal to board)
+// HARDWARE CONFIGURATION:
+// Red LED:                 PF1 (Internal to board.)
+// Green LED:               PF3 (Internal to board.)
+// Blue LED:                PF2 (Internal to board.)
+// SW1 Pushbutton:          PF4 (Internal to board.)
 // Stepper Motor A1 PWM:    PB5 Green wire
 // Stepper Motor A2 PWM:    PB6 Blue wire
 // Stepper Motor B1 PWM:    PE4 Orange wire
@@ -20,7 +22,9 @@
 #include <stdbool.h>
 #include "tm4c123gh6pm.h"
 
-/// Hardware bit band addresses
+// Hardware bit band addresses
+#define RED_LED     ( *( ( volatile uint32_t* )( 0x42000000 + ( 0x400253FC - 0x40000000 ) * 32 + 1 * 4 ) ) )
+#define GREEN_LED   ( *( ( volatile uint32_t* )( 0x42000000 + ( 0x400253FC - 0x40000000 ) * 32 + 3 * 4 ) ) )
 #define BLUE_LED    ( *( ( volatile uint32_t* )( 0x42000000 + ( 0x400253FC - 0x40000000 ) * 32 + 2 * 4 ) ) )
 #define PUSH_BUTTON ( *( ( volatile uint32_t *)( 0x42000000 + ( 0x400253FC - 0x40000000 ) * 32 + 4 * 4 ) ) )
 
@@ -30,43 +34,19 @@
 #define MOTOR_PIN_3 PWM0_2_CMPA_R // Orange wire - PE4
 #define MOTOR_PIN_4 PWM0_2_CMPB_R // White wire - PE5
 
-/// Initialize Hardware
+// Initialize Hardware
 void init_hw( void );
 
-/// Function to run the driver's boot sequence
-inline void boot_driver( void );
+inline void boot_driver( void ); // Function to run the driver's boot sequence
 inline void reset_button( void );
-
-/// Approximate busy waiting (in units of microseconds), given a 40 MHz system clock
-void wait_microsecond( uint32_t us );
-
+void wait_microsecond( uint32_t us ); // Approximate busy waiting (in units of microseconds), given a 40 MHz system clock
 void wait_pressed( void );
 
-int16_t current_angle = 0;
-// const uint16_t us_per_deg = 2100;
-const uint16_t us_per_deg = 20000;
-const uint16_t fullSpeed = 900;
-void process_turn( int16_t angle_deg );
-void turn_step( int16_t angle_deg );
+const uint16_t fullSpeed = 900;   // PWM numerator out of 1023.
 
-void wait_pressed( void )
-{
-    static uint8_t debounce = 0U;
+//-----------------------------------------------------------------------------
 
-    while( debounce < 10 ){
-        if( !PUSH_BUTTON )
-        {
-            ++debounce;
-        }
-        else
-        {
-            debounce = 0;
-        }
-        wait_microsecond( 5 );
-    }
-    debounce = 0;
-}
-
+// Left motor control functions.
 void leftForward (void) {
     MOTOR_PIN_1 = 0;
     MOTOR_PIN_2 = fullSpeed;
@@ -81,6 +61,7 @@ void leftStop (void) {
     MOTOR_PIN_1 = MOTOR_PIN_2 = 0;
 }
 
+// Right motor control functions.
 void rightForward (void) {
     MOTOR_PIN_3 = 0;
     MOTOR_PIN_4 = fullSpeed;
@@ -95,183 +76,8 @@ void rightStop (void) {
     MOTOR_PIN_3 = MOTOR_PIN_4 = 0;
 }
 
-void rotateAngle( int16_t angle_deg )
-{
-    uint16_t calFactor = 5500;
-    // Initialize motors.
-    MOTOR_PIN_1 = MOTOR_PIN_2 = MOTOR_PIN_3 = MOTOR_PIN_4 = 0;
-    // Rotate robot CCW.
-    if ( angle_deg < 0 ) {
-        MOTOR_PIN_1 = MOTOR_PIN_4 = fullSpeed;
-        wait_microsecond( -angle_deg * calFactor );
-    }
-    // Rotate robot CW.
-    if ( angle_deg > 0 ) {
-        MOTOR_PIN_2 = MOTOR_PIN_3 = fullSpeed;
-        wait_microsecond( angle_deg * calFactor );
-    }
-    // Stop motors.
-    MOTOR_PIN_1 = MOTOR_PIN_2 = MOTOR_PIN_3 = MOTOR_PIN_4 = 0;
-}
-
-void turn_step( int16_t angle_deg )
-{
-    if( current_angle < angle_deg )
-    {
-        ++current_angle;
-
-        MOTOR_PIN_1 = fullSpeed;
-        MOTOR_PIN_2 = 0;
-        MOTOR_PIN_3 = 0;
-        MOTOR_PIN_4 = fullSpeed;
-
-        wait_microsecond( us_per_deg );
-    }
-    else if( current_angle > angle_deg )
-    {
-        --current_angle;
-        MOTOR_PIN_1 = 0;
-        MOTOR_PIN_2 = fullSpeed;
-        MOTOR_PIN_3 = fullSpeed;
-        MOTOR_PIN_4 = 0;
-
-        wait_microsecond( us_per_deg );
-    }
-    else
-    {
-        MOTOR_PIN_1 = 0;
-        MOTOR_PIN_2 = 0;
-        MOTOR_PIN_3 = 0;
-        MOTOR_PIN_4 = 0;
-    }
-}
-
-void process_turn( int16_t angle_deg )
-{
-    int16_t theta = angle_deg;
-    if( angle_deg > 360 )
-    {
-        theta %= 360;
-    }
-    else if( angle_deg < -360 )
-    {
-        theta %= -360;
-    }
-
-    while( current_angle != theta )
-    {
-        turn_step( theta );
-    }
-
-    MOTOR_PIN_1 = 0;
-    MOTOR_PIN_2 = 0;
-    MOTOR_PIN_3 = 0;
-    MOTOR_PIN_4 = 0;
-}
-
-/**
- * The main entry point to this system. This function provides the execution
- * loop for the system. It continuously controls the motor driver with logic
- * and PWM line drives
- */
-int main(void)
-{
-    // Initialize the hardware for this driver
-    init_hw();
-    boot_driver();
-
-    // Default to still
-    MOTOR_PIN_1 = 0;
-    MOTOR_PIN_2 = 0;
-    MOTOR_PIN_3 = 0;
-    MOTOR_PIN_4 = 0;
-
-    while( 1 )
-    {
-        wait_pressed();
-        reset_button();
-
-        leftReverse();
-        rightReverse();
-        wait_microsecond(1000000);
-        leftStop();
-        rightStop();
-        wait_microsecond(1000000);
-        leftForward();
-        rightForward();
-
-        /*
-        leftForward();
-        wait_microsecond(1000000);
-        leftReverse();
-        wait_microsecond(1000000);
-        //leftStop();
-        wait_microsecond(1000000);
-        rightForward();
-        wait_microsecond(1000000);
-        rightReverse();
-        wait_microsecond(1000000);
-        //rightStop();
-        wait_microsecond(1000000);
-
-        rotateAngle(360);
-        wait_microsecond(1000000);
-        rotateAngle(-360);
-        wait_microsecond(1000000);
-        rotateAngle(90);
-        wait_microsecond(1000000);
-        rotateAngle(-90);
-        wait_microsecond(1000000);
-        rotateAngle(-90);
-        wait_microsecond(1000000);
-        rotateAngle(90);
-        wait_microsecond(1000000);
-
-        // Move forward.
-        MOTOR_PIN_2 = MOTOR_PIN_4 = fullSpeed;
-        MOTOR_PIN_1 = MOTOR_PIN_3 = 0;
-        wait_microsecond(1000000);
-
-        // Stop motors.
-        MOTOR_PIN_1 = MOTOR_PIN_2 = MOTOR_PIN_3 = MOTOR_PIN_4 = 0;
-        wait_microsecond(1000000);
-
-        // Move backwards.
-        MOTOR_PIN_1 = MOTOR_PIN_3 = fullSpeed;
-        MOTOR_PIN_2 = MOTOR_PIN_4 = 0;
-        wait_microsecond(1000000);
-
-        // Stop motors.
-        MOTOR_PIN_1 = MOTOR_PIN_2 = MOTOR_PIN_3 = MOTOR_PIN_4 = 0;
-
-        process_turn( 90 );
-        BLUE_LED = 1;
-        wait_microsecond( 1000000 );
-        BLUE_LED = 0;
-
-        process_turn( 0 );
-        BLUE_LED = 1;
-        wait_microsecond( 1000000 );
-        BLUE_LED = 0;
-
-        process_turn( -90 );
-        BLUE_LED = 1;
-        wait_microsecond( 1000000 );
-        BLUE_LED = 0;
-
-        process_turn( 0 );
-        BLUE_LED = 1;
-        wait_microsecond( 1000000 );
-        BLUE_LED = 0;
-        */
-    }
-
-    return 0;
-}
-
 // ----------------------------------------------------------------------------
-void init_hw()
-{
+void init_hw() {
     SYSCTL_RCC_R = SYSCTL_RCC_XTAL_16MHZ | SYSCTL_RCC_OSCSRC_MAIN | SYSCTL_RCC_USESYSDIV | ( 4 << SYSCTL_RCC_SYSDIV_S ) |
             SYSCTL_RCC_USEPWMDIV | SYSCTL_RCC_PWMDIV_64; // PWM = sysclock / 2
 
@@ -332,21 +138,38 @@ void init_hw()
     PWM0_2_CTL_R = PWM_0_CTL_ENABLE;
     PWM0_ENABLE_R = PWM_ENABLE_PWM3EN | PWM_ENABLE_PWM4EN | PWM_ENABLE_PWM5EN | PWM_ENABLE_PWM0EN;
 
+    /*
     // Configure Timer 1 as the time base
-//    SYSCTL_RCGCTIMER_R |= SYSCTL_RCGCTIMER_R1;       // turn-on timer
-//    TIMER1_CTL_R &= ~TIMER_CTL_TAEN;                 // turn-off timer before reconfiguring
-//    TIMER1_CFG_R = TIMER_CFG_32_BIT_TIMER;           // configure as 32-bit timer (A+B)
-//    TIMER1_TAMR_R = TIMER_TAMR_TAMR_PERIOD;          // configure for periodic mode (count down)
-//    TIMER1_TAILR_R = 0x9C40;                         // set load value to 40e3 for 1 KHz interrupt rate
-//    TIMER1_IMR_R = TIMER_IMR_TATOIM;                 // turn-on interrupts
-//    NVIC_EN0_R |= 1 << (INT_TIMER1A-16);             // turn-on interrupt 37 (TIMER1A)
-//    TIMER1_CTL_R |= TIMER_CTL_TAEN;                  // turn-on timer
+    SYSCTL_RCGCTIMER_R |= SYSCTL_RCGCTIMER_R1;       // turn-on timer
+    TIMER1_CTL_R &= ~TIMER_CTL_TAEN;                 // turn-off timer before reconfiguring
+    TIMER1_CFG_R = TIMER_CFG_32_BIT_TIMER;           // configure as 32-bit timer (A+B)
+    TIMER1_TAMR_R = TIMER_TAMR_TAMR_PERIOD;          // configure for periodic mode (count down)
+    TIMER1_TAILR_R = 0x9C40;                         // set load value to 40e3 for 1 KHz interrupt rate
+    TIMER1_IMR_R = TIMER_IMR_TATOIM;                 // turn-on interrupts
+    NVIC_EN0_R |= 1 << (INT_TIMER1A-16);             // turn-on interrupt 37 (TIMER1A)
+    TIMER1_CTL_R |= TIMER_CTL_TAEN;                  // turn-on timer
+    */
 }
 
 // ----------------------------------------------------------------------------
-inline void boot_driver( void )
-{
-    // Alert of the boot sequence
+
+inline void boot_driver( void ) {
+    // Alert of the boot sequence.
+    GREEN_LED = 1;
+    wait_microsecond( 500000 );
+    GREEN_LED = 0;
+    wait_microsecond( 500000 );
+    GREEN_LED = 1;
+    wait_microsecond( 500000 );
+    GREEN_LED = 0;
+    wait_microsecond( 500000 );
+    GREEN_LED = 1;
+    wait_microsecond( 500000 );
+    GREEN_LED = 0;
+}
+
+inline void reset_button( void ) {
+    // Alert of button pushed.
     BLUE_LED = 1;
     wait_microsecond( 500000 );
     BLUE_LED = 0;
@@ -354,35 +177,29 @@ inline void boot_driver( void )
     BLUE_LED = 1;
     wait_microsecond( 500000 );
     BLUE_LED = 0;
-}
-
-// ----------------------------------------------------------------------------
-inline void reset_button( void )
-{
-    // Alert of the boot sequence
+    wait_microsecond( 500000 );
     BLUE_LED = 1;
-    wait_microsecond( 50000 );
-    BLUE_LED = 0;
-    wait_microsecond( 50000 );
-    BLUE_LED = 1;
-    wait_microsecond( 50000 );
-    BLUE_LED = 0;
-    BLUE_LED = 1;
-    wait_microsecond( 50000 );
-    BLUE_LED = 0;
-    wait_microsecond( 50000 );
-    BLUE_LED = 1;
-    wait_microsecond( 50000 );
-    BLUE_LED = 0;
-
-    BLUE_LED = 1;
-    wait_microsecond( 1000000 );
+    wait_microsecond( 500000 );
     BLUE_LED = 0;
 }
 
-// ----------------------------------------------------------------------------
-void wait_microsecond( uint32_t us )
-{
+void wait_pressed( void ) {
+    static uint8_t debounce = 0U;
+    while( debounce < 10 ){
+        if( !PUSH_BUTTON )
+        {
+            ++debounce;
+        }
+        else
+        {
+            debounce = 0;
+        }
+        wait_microsecond( 5 );
+    }
+    debounce = 0;
+}
+
+void wait_microsecond( uint32_t us ) {
     __asm("WMS_LOOP0:   MOV  R1, #6");          // 1
     __asm("WMS_LOOP1:   SUB  R1, #1");          // 6
     __asm("             CBZ  R1, WMS_DONE1");   // 5+1*3
@@ -395,4 +212,48 @@ void wait_microsecond( uint32_t us )
     __asm("             B    WMS_LOOP0");       // 1*2 (speculative, so P=1)
     __asm("WMS_DONE0:");                        // ---
                                                 // 40 clocks/us + error
+}
+
+/**
+ * The main entry point to this system. This function provides the execution
+ * loop for the system. It continuously controls the motor driver with logic
+ * and PWM line drives
+ */
+int main(void)
+{
+    // Initialize the hardware for this driver
+    init_hw();
+    boot_driver();
+
+    // Default to off.
+    leftStop();
+    rightStop();
+
+    // Enter main loop.
+    while( 1 ) {
+        // Blocking function for button.
+        wait_pressed();
+        reset_button();
+        // Reverse for 1 sec.
+        leftReverse();
+        rightReverse();
+        wait_microsecond(1 * 1000000);
+        // Sit for 1 sec.
+        leftStop();
+        rightStop();
+        wait_microsecond(1* 1000000);
+        // Forward indefinitely.
+        leftForward();
+        rightForward();
+        RED_LED = 1;
+        
+        // Blocking function for button.
+        wait_pressed();
+        reset_button();
+        // Stop both motors.
+        leftStop();
+        rightStop();
+        RED_LED = 0;
+    }
+    return 0;
 }
