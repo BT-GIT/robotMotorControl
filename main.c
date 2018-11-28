@@ -22,61 +22,53 @@
 #include <stdbool.h>
 #include "tm4c123gh6pm.h"
 
-// Hardware bit band addresses
+// Hardware bit-band addresses.
 #define RED_LED     ( *( ( volatile uint32_t* )( 0x42000000 + ( 0x400253FC - 0x40000000 ) * 32 + 1 * 4 ) ) )
 #define GREEN_LED   ( *( ( volatile uint32_t* )( 0x42000000 + ( 0x400253FC - 0x40000000 ) * 32 + 3 * 4 ) ) )
 #define BLUE_LED    ( *( ( volatile uint32_t* )( 0x42000000 + ( 0x400253FC - 0x40000000 ) * 32 + 2 * 4 ) ) )
 #define PUSH_BUTTON ( *( ( volatile uint32_t *)( 0x42000000 + ( 0x400253FC - 0x40000000 ) * 32 + 4 * 4 ) ) )
 
-// Hardware PWM comparator addresses
+// Hardware PWM comparator addresses.
 #define MOTOR_PIN_1 PWM0_1_CMPB_R // Green wire  - PB5
 #define MOTOR_PIN_2 PWM0_0_CMPA_R // Blue wire   - PB6 (PD0)
 #define MOTOR_PIN_3 PWM0_2_CMPA_R // Orange wire - PE4
 #define MOTOR_PIN_4 PWM0_2_CMPB_R // White wire  - PE5
 
-// Initialize Hardware
-void init_hw( void );
-
-inline void boot_driver( void ); // Function to run the driver's boot sequence
-inline void reset_button( void );
-void wait_microsecond( uint32_t us ); // Approximate busy waiting (in units of microseconds), given a 40 MHz system clock
-void wait_pressed( void );
-
-const uint16_t fullSpeed = 900;   // PWM numerator out of 1023.
+// Motor control defines.
+#define MAXSPEED 900    // Duty cycle numerator out of 1023.
+#define ON  1
+#define OFF 0
 
 //-----------------------------------------------------------------------------
 
 // Left motor control functions.
 void leftForward (void) {
-    MOTOR_PIN_1 = 0;
-    MOTOR_PIN_2 = fullSpeed;
+    MOTOR_PIN_1 = OFF;
+    MOTOR_PIN_2 = MAXSPEED;
 }
-
 void leftReverse (void) {
-    MOTOR_PIN_1 = fullSpeed;
-    MOTOR_PIN_2 = 0;
+    MOTOR_PIN_1 = MAXSPEED;
+    MOTOR_PIN_2 = OFF;
 }
-
 void leftStop (void) {
-    MOTOR_PIN_1 = MOTOR_PIN_2 = 0;
+    MOTOR_PIN_1 = MOTOR_PIN_2 = OFF;
 }
 
 // Right motor control functions.
 void rightForward (void) {
-    MOTOR_PIN_3 = 0;
-    MOTOR_PIN_4 = fullSpeed;
+    MOTOR_PIN_3 = OFF;
+    MOTOR_PIN_4 = MAXSPEED;
 }
-
 void rightReverse (void) {
-    MOTOR_PIN_3 = fullSpeed;
-    MOTOR_PIN_4 = 0;
+    MOTOR_PIN_3 = MAXSPEED;
+    MOTOR_PIN_4 = OFF;
 }
-
 void rightStop (void) {
-    MOTOR_PIN_3 = MOTOR_PIN_4 = 0;
+    MOTOR_PIN_3 = MOTOR_PIN_4 = OFF;
 }
 
 // ----------------------------------------------------------------------------
+
 void init_hw() {
     SYSCTL_RCC_R = SYSCTL_RCC_XTAL_16MHZ | SYSCTL_RCC_OSCSRC_MAIN | SYSCTL_RCC_USESYSDIV | ( 4 << SYSCTL_RCC_SYSDIV_S ) |
             SYSCTL_RCC_USEPWMDIV | SYSCTL_RCC_PWMDIV_64; // PWM = sysclock / 2
@@ -153,34 +145,34 @@ void init_hw() {
 
 // ----------------------------------------------------------------------------
 
+// Alert of the boot sequence.
 inline void boot_driver( void ) {
-    // Alert of the boot sequence.
-    GREEN_LED = 1;
+    GREEN_LED = ON;
     wait_microsecond( 500000 );
-    GREEN_LED = 0;
+    GREEN_LED = OFF;
     wait_microsecond( 500000 );
-    GREEN_LED = 1;
+    GREEN_LED = ON;
     wait_microsecond( 500000 );
-    GREEN_LED = 0;
+    GREEN_LED = OFF;
     wait_microsecond( 500000 );
-    GREEN_LED = 1;
+    GREEN_LED = ON;
     wait_microsecond( 500000 );
-    GREEN_LED = 0;
+    GREEN_LED = OFF;
 }
 
+// Alert of button pushed.
 inline void reset_button( void ) {
-    // Alert of button pushed.
-    BLUE_LED = 1;
+    BLUE_LED = ON;
     wait_microsecond( 500000 );
-    BLUE_LED = 0;
+    BLUE_LED = OFF;
     wait_microsecond( 500000 );
-    BLUE_LED = 1;
+    BLUE_LED = ON;
     wait_microsecond( 500000 );
-    BLUE_LED = 0;
+    BLUE_LED = OFF;
     wait_microsecond( 500000 );
-    BLUE_LED = 1;
+    BLUE_LED = ON;
     wait_microsecond( 500000 );
-    BLUE_LED = 0;
+    BLUE_LED = OFF;
 }
 
 void wait_pressed( void ) {
@@ -243,7 +235,7 @@ int main(void)
         // Forward indefinitely.
         leftForward();
         rightForward();
-        RED_LED = 1;
+        RED_LED = ON;
         
         // Blocking function for button.
         wait_pressed();
@@ -251,7 +243,7 @@ int main(void)
         // Stop both motors.
         leftStop();
         rightStop();
-        RED_LED = 0;
+        RED_LED = OFF;
     }
     return 0;
 }
