@@ -33,8 +33,8 @@
 
 // Motor control defines.
 #define MAXSPEED 900    // Duty cycle numerator out of 1023.
-#define ON  1
-#define OFF 0
+#define ON       1
+#define OFF      0
 
 // ----------------------------------------------------------------------------
 
@@ -202,7 +202,7 @@ int main(void)
 
     // Enter main loop.
     while( 1 ) {
-        // Sequence #1.
+        // SEQUENCE #1
         wait_pressed(); // Blocking function for button.
         reset_button(); // 2.5s delay.
         // Reverse for 1 sec.
@@ -218,7 +218,7 @@ int main(void)
         rightForward();
         RED_LED = ON;
         
-        // Sequence #2.
+        // SEQUENCE #2
         wait_pressed(); // Blocking function for button.
         reset_button(); // 2.5s delay.
         // Stop both motors.
