@@ -191,8 +191,7 @@ void rightStop (void) {
 
 //-----------------------------------------------------------------------------
 
-int main(void)
-{
+int main(void) {
     // Initialize the hardware for this driver
     init_hw();
     boot_driver();
