@@ -19,6 +19,8 @@
 #include <stdbool.h>
 #include "tm4c123gh6pm.h"
 
+void wait_microsecond( uint32_t us );
+
 // Hardware bit-band addresses.
 #define RED_LED     ( *( ( volatile uint32_t* )( 0x42000000 + ( 0x400253FC - 0x40000000 ) * 32 + 1 * 4 ) ) )
 #define GREEN_LED   ( *( ( volatile uint32_t* )( 0x42000000 + ( 0x400253FC - 0x40000000 ) * 32 + 3 * 4 ) ) )
@@ -32,8 +34,9 @@
 #define MOTOR_PIN_4 PWM0_2_CMPB_R // White wire  - PE5
 
 // Discretes.
-#define MAXSPEED 1023   // Duty cycle numerator out of 1023.
-#define REGSPEED 512    // Duty cycle numerator out of 1023.
+#define MAXSPEED        1023   // Duty cycle numerator out of 1023.
+#define LEFT_REG_SPEED  512    // Duty cycle numerator out of 1023.
+#define RIGHT_REG_SPEED 700    // Duty cycle numerator out of 1023.
 #define ON       1
 #define OFF      0
 #define FORWARD  1
@@ -52,9 +55,9 @@ void init_hw() {
     SYSCTL_RCGC2_R = SYSCTL_RCGC2_GPIOB | SYSCTL_RCGC2_GPIOE | SYSCTL_RCGC2_GPIOF;
 
     // Configure LED pins.
-    GPIO_PORTF_DIR_R  |= 0x04;  // make bit 4 an output
+    GPIO_PORTF_DIR_R  |= 0x0E;  // make bit 4 an output
     GPIO_PORTF_DR2R_R |= 0x04; // set drive strength to 2mA (not needed since default configuration -- for clarity)
-    GPIO_PORTF_DEN_R  |= 0x04;  // enable LED
+    GPIO_PORTF_DEN_R  |= 0x0E;  // enable LED
     GPIO_PORTF_DEN_R  |= 0x10;  // enable push button
     GPIO_PORTF_PUR_R  |= 0x10;  // enable internal pull-up for push button
 
@@ -63,7 +66,7 @@ void init_hw() {
     GPIO_PORTB_DR2R_R  |= 0x60;  // Set drive strength to 2mA
     GPIO_PORTB_DEN_R   |= 0x60;   // Enable bits 5 and 6 for digital
     GPIO_PORTB_AFSEL_R |= 0x60; // Select auxilary function (PWM) for bits 5 and 6
-    
+
     // Enable PWM on bits 5 and 6.
     GPIO_PORTB_PCTL_R = GPIO_PCTL_PB5_M0PWM3 | GPIO_PCTL_PB6_M0PWM0;
 
@@ -110,30 +113,30 @@ void init_hw() {
 // Alert of the boot sequence.
 inline void boot_driver( void ) {
     GREEN_LED = ON;
-    wait_microsecond( 500000 );
+    wait_microsecond( 100000 );
     GREEN_LED = OFF;
-    wait_microsecond( 500000 );
+    wait_microsecond( 100000 );
     GREEN_LED = ON;
-    wait_microsecond( 500000 );
+    wait_microsecond( 100000 );
     GREEN_LED = OFF;
-    wait_microsecond( 500000 );
+    wait_microsecond( 100000 );
     GREEN_LED = ON;
-    wait_microsecond( 500000 );
+    wait_microsecond( 100000 );
     GREEN_LED = OFF;
 }
 
 // Alert of button pushed.
 inline void reset_button( void ) {
     BLUE_LED = ON;
-    wait_microsecond( 500000 );
+    wait_microsecond( 100000 );
     BLUE_LED = OFF;
-    wait_microsecond( 500000 );
+    wait_microsecond( 100000 );
     BLUE_LED = ON;
-    wait_microsecond( 500000 );
+    wait_microsecond( 100000 );
     BLUE_LED = OFF;
-    wait_microsecond( 500000 );
+    wait_microsecond( 100000 );
     BLUE_LED = ON;
-    wait_microsecond( 500000 );
+    wait_microsecond( 100000 );
     BLUE_LED = OFF;
 }
 
@@ -198,87 +201,101 @@ void rightStop (void) {
 // Combined motor control.
 void motorControl (uint8_t left, uint8_t right) {
     // If switching motor directions, 100% duty cycle for 100ms.
-    if (left |= leftStatus || right |= rightStatus) {
-        if (left |= leftStatus) {
+    if (left != leftStatus || right != rightStatus) {
+        if (left != leftStatus) {
             switch(left) {
                 case 1:
                     leftForward(MAXSPEED);
+                    break;
                 case 2:
                     leftReverse(MAXSPEED);
+                    break;
                 case 3:
                     leftStop();
+                    break;
             }
         }
-        if (right |= rightStatus) {
+        if (right != rightStatus) {
             switch(right) {
                 case 1:
                     rightForward(MAXSPEED);
+                    break;
                 case 2:
                     rightReverse(MAXSPEED);
+                    break;
                 case 3:
                     rightStop();
+                    break;
             }
         }
         wait_microsecond(100000);
     }
-    
+
     // Set cruising motor speed.
     switch(left) {
         case 1:
-            leftForward(REGSPEED);
+            leftForward(LEFT_REG_SPEED);
             leftStatus = FORWARD;
+            break;
         case 2:
-            leftReverse(REGSPEED);
+            leftReverse(LEFT_REG_SPEED);
             leftStatus = REVERSE;
+            break;
         case 3:
             leftStop();
             leftStatus = STOP;
+            break;
+    }
     switch(right) {
         case 1:
-            rightForward(REGSPEED);
+            rightForward(RIGHT_REG_SPEED);
             rightStatus = FORWARD;
+            break;
         case 2:
-            rightReverse(REGSPEED);
+            rightReverse(RIGHT_REG_SPEED);
             rightStatus = REVERSE;
+            break;
         case 3:
             rightStop();
             rightStatus = STOP;
+            break;
+    }
 }
 
 //-----------------------------------------------------------------------------
 
-int main(void) {
-    // Initialize the hardware for this driver
+int main (void) {
+    // Initialize the hardware for this driver.
     init_hw();
     boot_driver();
-    
+
     // Verify motors stopped.
-    leftStop();
-    rightStop();
+    motorControl(STOP,STOP);
 
     // Enter main loop.
     while(1) {
         // TEST SEQUENCE #1
         wait_pressed(); // Blocking function for button.
-        reset_button(); // 2.5s delay.
-        // Reverse for 1 sec.
-        motorControl(REVERSE,REVERSE);
-        wait_microsecond(900000);
-        // Sit for 1 sec.
-        leftStop();
-        rightStop();
-        wait_microsecond(1* 1000000);
-        // Forward indefinitely.
-        leftForward(MAXSPEED);
-        rightForward(MAXSPEED);
-        wait_microsecond(100000);
-        leftForward(REGSPEED);
-        rightForward(REGSPEED);
-        RED_LED = ON;
-        
+        reset_button(); // LED delay.
+        while (1) {
+            // Reverse for 2 sec.
+            motorControl(REVERSE,REVERSE);
+            wait_microsecond(1900000);
+            // Sit for 1 sec.
+            motorControl(STOP,STOP);
+            wait_microsecond(1 * 1000000);
+            // Forward indefinitely.
+            motorControl(FORWARD,FORWARD);
+            wait_microsecond(1900000);
+            // Sit for 1 sec.
+            motorControl(STOP,STOP);
+            wait_microsecond(1 * 1000000);
+            RED_LED = ON;
+        }
+
         // TEST SEQUENCE #2
         wait_pressed(); // Blocking function for button.
-        reset_button(); // 2.5s delay.
+        reset_button(); // LED delay.
         // Stop both motors.
         leftStop();
         rightStop();
