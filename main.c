@@ -31,7 +31,7 @@
 #define MOTOR_PIN_3 PWM0_2_CMPA_R // Orange wire - PE4
 #define MOTOR_PIN_4 PWM0_2_CMPB_R // White wire  - PE5
 
-// Motor control defines.
+// Discretes.
 #define MAXSPEED 900    // Duty cycle numerator out of 1023.
 #define ON       1
 #define OFF      0
