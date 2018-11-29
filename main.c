@@ -38,8 +38,12 @@ void wait_microsecond( uint32_t us );
 
 // Discretes.
 #define MAX_SPEED        1023   // Duty cycle numerator out of 1023.
-#define LEFT_REG_SPEED  512    // Duty cycle numerator out of 1023.
-#define RIGHT_REG_SPEED 650    // Duty cycle numerator out of 1023.
+// Duty cycle for robot #1.
+//    #define LEFT_REG_SPEED  512    // Duty cycle numerator out of 1023.
+//    #define RIGHT_REG_SPEED 650    // Duty cycle numerator out of 1023.
+// Duty cycle for robot #2.
+    #define LEFT_REG_SPEED  750     // Duty cycle numerator out of 1023.
+    #define RIGHT_REG_SPEED 650     // Duty cycle numerator out of 1023.
 #define ON       1
 #define OFF      0
 #define FORWARD  1
