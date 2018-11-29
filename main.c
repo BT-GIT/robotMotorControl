@@ -14,6 +14,8 @@
 //    Stepper Motor A2 PWM:    PB6 Blue wire
 //    Stepper Motor B1 PWM:    PE4 Orange wire
 //    Stepper Motor B2 PWM:    PE5 White wire
+//    XBee RF TX/RX:           PB0
+//    XBee RF TX/RX:           PB1
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -28,15 +30,16 @@ void wait_microsecond( uint32_t us );
 #define PUSH_BUTTON ( *( ( volatile uint32_t *)( 0x42000000 + ( 0x400253FC - 0x40000000 ) * 32 + 4 * 4 ) ) )
 
 // Hardware PWM comparator addresses.
+
 #define MOTOR_PIN_1 PWM0_1_CMPB_R // Green wire  - PB5
 #define MOTOR_PIN_2 PWM0_0_CMPA_R // Blue wire   - PB6 (PD0)
 #define MOTOR_PIN_3 PWM0_2_CMPA_R // Orange wire - PE4
 #define MOTOR_PIN_4 PWM0_2_CMPB_R // White wire  - PE5
 
 // Discretes.
-#define MAXSPEED        1023   // Duty cycle numerator out of 1023.
+#define MAX_SPEED        1023   // Duty cycle numerator out of 1023.
 #define LEFT_REG_SPEED  512    // Duty cycle numerator out of 1023.
-#define RIGHT_REG_SPEED 700    // Duty cycle numerator out of 1023.
+#define RIGHT_REG_SPEED 650    // Duty cycle numerator out of 1023.
 #define ON       1
 #define OFF      0
 #define FORWARD  1
@@ -201,14 +204,15 @@ void rightStop (void) {
 // Combined motor control.
 void motorControl (uint8_t left, uint8_t right) {
     // If switching motor directions, 100% duty cycle for 100ms.
+    // Mitigates stalling of motors, due to startup current.
     if (left != leftStatus || right != rightStatus) {
         if (left != leftStatus) {
             switch(left) {
                 case 1:
-                    leftForward(MAXSPEED);
+                    leftForward(MAX_SPEED);
                     break;
                 case 2:
-                    leftReverse(MAXSPEED);
+                    leftReverse(MAX_SPEED);
                     break;
                 case 3:
                     leftStop();
@@ -218,10 +222,10 @@ void motorControl (uint8_t left, uint8_t right) {
         if (right != rightStatus) {
             switch(right) {
                 case 1:
-                    rightForward(MAXSPEED);
+                    rightForward(MAX_SPEED);
                     break;
                 case 2:
-                    rightReverse(MAXSPEED);
+                    rightReverse(MAX_SPEED);
                     break;
                 case 3:
                     rightStop();
@@ -277,21 +281,15 @@ int main (void) {
         // TEST SEQUENCE #1
         wait_pressed(); // Blocking function for button.
         reset_button(); // LED delay.
-        while (1) {
-            // Reverse for 2 sec.
-            motorControl(REVERSE,REVERSE);
-            wait_microsecond(1900000);
-            // Sit for 1 sec.
-            motorControl(STOP,STOP);
-            wait_microsecond(1 * 1000000);
-            // Forward indefinitely.
-            motorControl(FORWARD,FORWARD);
-            wait_microsecond(1900000);
-            // Sit for 1 sec.
-            motorControl(STOP,STOP);
-            wait_microsecond(1 * 1000000);
-            RED_LED = ON;
-        }
+        // Reverse for 2 sec.
+        motorControl(REVERSE,REVERSE);
+        wait_microsecond(1900000);
+        // Sit for 1 sec.
+        motorControl(STOP,STOP);
+        wait_microsecond(1 * 1000000);
+        // Forward indefinitely.
+        motorControl(FORWARD,FORWARD);
+        RED_LED = ON;
 
         // TEST SEQUENCE #2
         wait_pressed(); // Blocking function for button.
